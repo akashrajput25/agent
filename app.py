@@ -18,6 +18,12 @@ def home():
 @app.route('/api/chat', methods=['POST'])
 def chat():
     try:
+        if not AIML_API_KEY:
+            return jsonify({
+                "success": False,
+                "error": "API Key is missing. Please set the AIML_API_KEY environment variable."
+            }), 500
+
         data = request.json
         user_message = data.get('message', '')
         

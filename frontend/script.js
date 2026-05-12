@@ -57,12 +57,20 @@ async function sendMessage() {
             body: JSON.stringify({ message: message })
         });
         
-        const data = await response.json();
-        
         if (!response.ok) {
-            throw new Error(data.error || 'Failed to get response from AI');
+            // Try to parse JSON error, otherwise use status text
+            let errorText = `Error ${response.status}: ${response.statusText}`;
+            try {
+                const errorData = await response.json();
+                errorText = errorData.error || errorText;
+            } catch (e) {
+                // Not JSON, likely an HTML error page
+            }
+            throw new Error(errorText);
         }
         
+        const data = await response.json();
+
         // Remove loading message
         if (loadingMsg && loadingMsg.parentNode === messagesContainer) {
             messagesContainer.removeChild(loadingMsg);
