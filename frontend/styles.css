@@ -198,6 +198,19 @@ body {
     font-size: 16px;
 }
 
+/* Markdown Content Styling */
+.message-content pre {
+    background: #1e1e1e;
+    padding: 16px;
+    border-radius: 8px;
+    margin: 12px 0;
+    overflow-x: auto;
+}
+
+.message-content code {
+    font-family: 'Fira Code', monospace;
+}
+
 .assistant .message-content {
     color: var(--text-main);
 }

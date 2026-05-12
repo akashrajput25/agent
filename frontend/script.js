@@ -118,7 +118,17 @@ function addMessage(text, sender) {
     // Create message content
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
-    contentDiv.textContent = text;
+
+    if (sender === 'assistant' && text !== '') {
+        // Use marked to parse markdown for assistant responses
+        contentDiv.innerHTML = marked.parse(text);
+        // Apply syntax highlighting to code blocks
+        contentDiv.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block);
+        });
+    } else {
+        contentDiv.textContent = text;
+    }
     
     wrapperDiv.appendChild(contentDiv);
     

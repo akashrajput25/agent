@@ -37,13 +37,13 @@ def chat():
         }
         
         payload = {
-            "model": "minimax/minimax-m2.5:free",
+            "model": "meta-llama/llama-3.1-8b-instruct:free",
             "messages": [{"role": "user", "content": user_message}],
             "temperature": 0.7,
             "max_tokens": 1000
         }
         
-        response = requests.post(AIML_API_URL, headers=headers, json=payload, timeout=30)
+        response = requests.post(AIML_API_URL, headers=headers, json=payload, timeout=60)
         
         if response.status_code != 200:
             return jsonify({
