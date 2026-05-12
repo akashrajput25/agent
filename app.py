@@ -1,19 +1,19 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import requests
 import json
+import os
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='frontend', static_url_path='')
 CORS(app)
 
 # OpenRouter API Configuration
-import os
 AIML_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 AIML_API_KEY = os.getenv("AIML_API_KEY")
 
 @app.route('/')
 def home():
-    return jsonify({"message": "AI Agent API is running"})
+    return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
