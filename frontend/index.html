@@ -4,38 +4,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Agent Chat</title>
+    <title>MIKU AI</title>
     <link rel="stylesheet" href="styles.css">
     <!-- Markdown and Syntax Highlighting -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 </head>
-
 <body>
+    <div id="authOverlay" class="auth-overlay">
+        <div class="auth-card">
+            <h2 id="authTitle">Login to MIKU</h2>
+            <div id="authError" class="error-message"></div>
+            <input type="email" id="authEmail" placeholder="Email Address">
+            <input type="password" id="authPassword" placeholder="Password">
+            <button id="authSubmitBtn" class="auth-btn">Login</button>
+            <p class="auth-toggle">New user? <span id="toggleAuthMode">Register here</span></p>
+        </div>
+    </div>
+
+    <div id="starsContainer" class="stars-container"></div>
+
     <div class="app-wrapper">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
-                    <span class="logo-icon">🤖</span>
-                    <span class="logo-text">AgentAI</span>
+                    <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon">
+                        <!-- Professional Man Portrait -->
+                        <path d="M24 44c11 0 20-9 20-20S35 4 24 4 4 13 4 24s9 20 20 20z" fill="rgba(255,255,255,0.03)" stroke="currentColor" stroke-width="1"/>
+                        <path d="M14 16c0-5 4-9 10-9s10 4 10 9v3H14v-3z" fill="currentColor" fill-opacity="0.8"/> <!-- Hair -->
+                        <path d="M34 19c0 5.5-4.5 10-10 10s-10-4.5-10-10" stroke="currentColor" stroke-width="2"/> <!-- Jaw -->
+                        <path d="M14 22c1 6 4 10 10 10s9-4 10-10" fill="currentColor" fill-opacity="0.3"/> <!-- Beard Base -->
+                        <path d="M16 28c2 4 5 6 8 6s6-2 8-6" stroke="currentColor" stroke-width="1.5" fill="currentColor" fill-opacity="0.2"/> <!-- Beard Detail -->
+                        <circle cx="19" cy="20" r="1.2" fill="currentColor"/> <!-- Eye L -->
+                        <circle cx="29" cy="20" r="1.2" fill="currentColor"/> <!-- Eye R -->
+                        <path d="M20 25c1 1 3 1 4 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/> <!-- Smile -->
+                        <path d="M18 36l6 4 6-4" stroke="currentColor" stroke-width="2" fill="none"/> <!-- Collar -->
+                    </svg>
+                    <span class="logo-text" data-tooltip="Multilingual Interactive Knowledge&#10;User-interface">MIKU</span>
                 </div>
-                <button class="new-chat-btn">
-                    <span>+</span> New Chat
-                </button>
+                <button class="close-sidebar-btn" id="closeSidebarBtn" aria-label="Close sidebar">✕</button>
             </div>
+            <button class="new-chat-btn" id="newChatBtn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12h14"></path>
+                </svg>
+                New Thread
+            </button>
             <nav class="sidebar-nav">
-                <div class="nav-section">
+                <div class="nav-section" id="historyList">
                     <p class="nav-label">Recent</p>
-                    <div class="history-item active">Current Conversation</div>
                 </div>
             </nav>
             <div class="sidebar-footer">
                 <div class="user-profile">
                     <div class="user-avatar">👤</div>
                     <div class="user-info">
-                        <p class="user-name">Guest User</p>
+                        <div class="user-name-wrapper">
+                            <p class="user-name">Guest User</p>
+                            <button class="edit-profile-btn" id="editProfileBtn" title="Edit Name">✎</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -44,36 +73,113 @@
         <!-- Main Chat Area -->
         <main class="main-content">
             <div class="chat-container">
-                <div class="messages" id="messagesContainer">
-                    <div class="message assistant">
-                        <div class="avatar">🤖</div>
-                        <div class="message-wrapper">
-                            <div class="message-content">
-                                <p>Hello! I'm your AI assistant. How can I help you today?</p>
-                            </div>
+                <!-- Header with Model Selector -->
+                <div class="chat-header">
+                    <button class="menu-toggle" id="menuToggle">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
+                    <div class="header-spacer"></div>
+                    <div class="model-selector-wrapper">
+                        <button class="model-selector" id="modelBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="1"></circle>
+                                <circle cx="19" cy="12" r="1"></circle>
+                                <circle cx="5" cy="12" r="1"></circle>
+                            </svg>
+                            <span id="modelDisplay">OpenRouter Free</span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dropdown-icon">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                        <div class="model-dropdown" id="modelDropdown">
+                            <div class="model-option" data-model="openrouter/free">OpenRouter Free</div>
+                            <div class="model-option" data-model="minimax/minimax-m2.5:free">Minimax M2.5 Free</div>
+                            <div class="model-option" data-model="deepseek/deepseek-v4-flash:free">DeepSeek V4 Flash Free</div>
+                            <div class="model-option" data-model="arcee-ai/trinity-large-thinking:free">Trinity Large Thinking Free</div>
+                            <div class="model-option" data-model="qwen/qwen3-next-80b-a3b-instruct:free">Qwen 3 Next 80B Free</div>
+                            <div class="model-option" data-model="qwen/qwen3-coder:free">Qwen 3 Coder Free</div>
+                            <div class="model-option" data-model="liquid/lfm-2.5-1.2b-thinking:free">Liquid LFM 2.5 1.2B Thinking Free</div>
+                        </div>
+                    </div>
+                    <div class="header-spacer"></div>
+                </div>
+
+                <!-- Messages Container -->
+                <div class="messages" id="messagesContainer"></div>
+
+                <!-- Welcome State / Quick Actions -->
+                <div class="welcome-state" id="welcomeState">
+                    <h1 class="welcome-title" id="welcomeTitle">Hello there!</h1>
+                    <p class="welcome-subtitle">How can I help you today?</p>
+                    
+                    <div class="quick-actions" id="quickActionsContainer">
+                        <button class="quick-action-btn" data-prompt="What is the weather in San Francisco?">
+                            <span class="action-title">What's the weather</span>
+                            <span class="action-subtitle">in San Francisco?</span>
+                        </button>
+                        <button class="quick-action-btn" data-prompt="Explain React hooks like useState and useEffect">
+                            <span class="action-title">Explain React hooks</span>
+                            <span class="action-subtitle">like useState and useEffect</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="profile-edit-overlay" id="profileEditOverlay">
+                    <div class="profile-edit-card">
+                        <h2>Edit Profile</h2>
+                        <div class="input-group">
+                            <label for="editName">Name</label>
+                            <input id="editName" class="modal-input" type="text" placeholder="Your name">
+                        </div>
+                        <div class="input-group">
+                            <label for="editEmail">Email</label>
+                            <input id="editEmail" class="modal-input" type="email" placeholder="Email address" disabled>
+                        </div>
+                        <div class="input-group">
+                            <label for="editMobileNumber">Mobile Number</label>
+                            <input id="editMobileNumber" class="modal-input" type="tel" placeholder="Mobile number">
+                        </div>
+                        <div class="input-group">
+                            <label for="editAge">Age</label>
+                            <input id="editAge" class="modal-input" type="number" placeholder="Age">
+                        </div>
+                        <div id="profileEditError" class="error-message"></div>
+                        <div class="profile-edit-actions">
+                            <button class="modal-secondary-btn" id="cancelProfileEditBtn" type="button">Cancel</button>
+                            <button class="modal-primary-btn" id="saveProfileBtn" type="button">Save</button>
                         </div>
                     </div>
                 </div>
 
+                <!-- Input Area -->
                 <div class="input-area">
+                    <div id="errorMessage" class="error-message"></div>
                     <div class="input-container">
-                        <div id="errorMessage" class="error-message"></div>
-                        <div class="input-wrapper">
-                            <textarea 
-                                id="userInput" 
-                                placeholder="Ask me anything..." 
-                                autocomplete="off"
-                                class="chat-input"
-                                rows="1"
-                            ></textarea>
+                        <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                        <textarea 
+                            id="userInput" 
+                            placeholder="Send a message... (@ to mention, / for commands)" 
+                            autocomplete="off"
+                            class="chat-input"
+                            rows="1"
+                        ></textarea>
+                        <div class="input-actions">
+                            <button class="input-action-btn" id="attachBtn" title="Attach file">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 2v20M2 12h20"></path>
+                                </svg>
+                            </button>
                             <button id="sendBtn" class="send-btn" title="Send message (Enter)">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="22" y1="2" x2="11" y2="13"></line>
-                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                            </svg>
-                        </button>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M16.6915026,12.4744748 L3.50612381,13.2599618 C3.19218622,13.2599618 3.03521743,13.4170592 3.03521743,13.5741566 L1.15159189,20.0151496 C0.8376543,20.8006365 0.99,21.89 1.77946707,22.52 C2.41,22.99 3.50612381,23.1 4.13399899,22.8429026 L21.714504,14.0454487 C22.6563168,13.5741566 23.1272231,12.6315722 22.9702544,11.6889879 L4.13399899,1.16234899 C3.34915502,0.9 2.40734225,1.00636533 1.77946707,1.4776575 C0.994623095,2.10604706 0.837654326,3.0486314 1.15159189,3.99701575 L3.03521743,10.4380088 C3.03521743,10.5951061 3.19218622,10.7522035 3.50612381,10.7522035 L16.6915026,11.5376905 C16.6915026,11.5376905 17.1624089,11.5376905 17.1624089,12.0089827 C17.1624089,12.4744748 16.6915026,12.4744748 16.6915026,12.4744748 Z"></path>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
-                    <p class="input-hint">Press Enter or click Send</p>
                 </div>
             </div>
         </main>
