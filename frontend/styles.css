@@ -577,6 +577,8 @@ input:focus-visible {
 /* This rule was previously broken due to syntax errors above it, now it should apply correctly */
 .new-chat-btn {
     width: 90%; /* Reduced width by 10% */
+    margin: 0 auto; /* Center inside sidebar */
+    align-self: center; /* Extra safety for flex layouts */
     padding: 12px 16px;
     background: linear-gradient(180deg, rgba(16, 163, 127, 0.14), rgba(16, 163, 127, 0.04));
     border: 1px solid rgba(16, 163, 127, 0.46);
@@ -593,6 +595,7 @@ input:focus-visible {
     transition: transform 0.24s var(--motion-smooth), border-color 0.24s ease, background 0.24s ease, box-shadow 0.24s ease;
     animation: btnPulse 3.2s infinite;
 }
+
 
 @keyframes btnPulse {
     0% { box-shadow: 0 0 0 0 rgba(16, 163, 127, 0.2); }
@@ -613,6 +616,28 @@ input:focus-visible {
     width: 18px;
     height: 18px;
     stroke: var(--text-primary);
+}
+
+.thread-search {
+    padding: 12px 12px 0;
+}
+
+.thread-search input {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.045);
+    color: var(--text-primary);
+    padding: 9px 11px;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.thread-search input:focus {
+    border-color: rgba(16, 163, 127, 0.7);
+    background: rgba(16, 163, 127, 0.08);
+    box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
 }
 
 .sidebar-nav {
@@ -661,6 +686,10 @@ input:focus-visible {
     color: var(--text-primary);
 }
 
+.history-item.pinned {
+    border-color: rgba(255, 209, 102, 0.28);
+}
+
 .history-item span {
     flex: 1;
     white-space: nowrap;
@@ -680,13 +709,42 @@ input:focus-visible {
     border-radius: 4px;
 }
 
+.thread-action-btn {
+    opacity: 0;
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+}
+
 .history-item:hover .delete-thread-btn {
     opacity: 1;
+}
+
+.history-item:hover .thread-action-btn,
+.history-item.active .thread-action-btn,
+.history-item.pinned .thread-action-btn {
+    opacity: 1;
+}
+
+.thread-action-btn:hover {
+    color: var(--text-primary);
+    background-color: rgba(255, 255, 255, 0.08);
 }
 
 .delete-thread-btn:hover {
     color: var(--error);
     background-color: rgba(231, 76, 60, 0.1);
+}
+
+.empty-history {
+    color: var(--text-tertiary);
+    font-size: 13px;
+    padding: 12px;
 }
 
 .sidebar-footer {
@@ -1057,6 +1115,36 @@ input:focus-visible {
     min-height: 0;
     padding: 0;
     overflow: visible;
+}
+
+.scroll-latest-btn {
+    position: fixed;
+    right: 28px;
+    bottom: 142px;
+    z-index: 1001;
+    border: 1px solid rgba(16, 163, 127, 0.42);
+    border-radius: 999px;
+    background: rgba(14, 18, 23, 0.88);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 9px 13px;
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 0.22s ease, transform 0.22s var(--motion-smooth), border-color 0.22s ease;
+}
+
+.scroll-latest-btn.show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.scroll-latest-btn:hover {
+    border-color: var(--accent);
 }
 
 .message {
@@ -1462,6 +1550,16 @@ input:focus-visible {
     opacity: 1;
 }
 
+.input-meta {
+    max-width: 900px;
+    margin: 8px auto 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--text-tertiary);
+    font-size: 11px;
+}
+
 .chat-input {
     flex: 1;
     background: transparent;
@@ -1656,6 +1754,10 @@ input:focus-visible {
         padding: 16px 8px 176px;
         min-height: 0;
     }
+    .scroll-latest-btn {
+        right: 16px;
+        bottom: 150px;
+    }
     .message {
         gap: 0;
     }
@@ -1719,6 +1821,11 @@ input:focus-visible {
     .prompt-chip {
         font-size: 11px;
         padding: 6px 9px;
+    }
+    .input-meta {
+        font-size: 10px;
+        flex-direction: column;
+        gap: 2px;
     }
     .profile-edit-card {
         width: calc(100% - 24px);

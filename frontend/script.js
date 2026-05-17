@@ -51,11 +51,15 @@ const avatarPreview = document.getElementById('avatarPreview');
 const avatarGrid = document.getElementById('avatarGrid');
 const exportThreadBtn = document.getElementById('exportThreadBtn');
 const clearThreadsBtn = document.getElementById('clearThreadsBtn');
+const threadSearchInput = document.getElementById('threadSearchInput');
+const scrollLatestBtn = document.getElementById('scrollLatestBtn');
+const inputCount = document.getElementById('inputCount');
 
 let isLoginMode = true;
 let currentUser = JSON.parse(localStorage.getItem('miku_user')) || null;
 const savedAssistantOptions = JSON.parse(localStorage.getItem('miku_assistant_options')) || {};
 let selectedAvatarId = currentUser?.avatarId || 'male-1';
+let threadSearchQuery = '';
 
 const assistantModeNames = {
     balanced: 'Balanced assistant',
@@ -378,6 +382,11 @@ closeSidebarBtn?.addEventListener('click', () => {
     sidebar.classList.remove('mobile-open');
 });
 
+threadSearchInput?.addEventListener('input', (e) => {
+    threadSearchQuery = e.target.value;
+    renderSidebar();
+});
+
 logoutBtn?.addEventListener('click', () => {
     // Clear user session locally and show auth overlay
     if (currentUser) {
@@ -416,7 +425,14 @@ userInput.addEventListener('keypress', (e) => {
 userInput.addEventListener('input', (e) => {
     e.target.style.height = 'auto';
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+    updateInputCount();
 });
+
+function updateInputCount() {
+    if (!inputCount) return;
+    const count = userInput.value.length;
+    inputCount.textContent = `${count} ${count === 1 ? 'character' : 'characters'}`;
+}
 
 function getAssistantOptions() {
     return {
@@ -478,6 +494,7 @@ document.querySelectorAll('.model-option').forEach(option => {
 window.addEventListener('DOMContentLoaded', () => {
     validateAuthFields();
     restoreAssistantOptions();
+    updateInputCount();
     checkAuthState();
 });
 
@@ -499,15 +516,25 @@ function initApp() {
 }
 
 function createNewThread() {
+    // If user is currently searching threads, clear the filter so the newly created
+    // thread is guaranteed to appear and match the active highlight.
+    if (threadSearchQuery && threadSearchInput) {
+        threadSearchQuery = '';
+        threadSearchInput.value = '';
+    }
+
     const id = 'thread_' + Date.now();
+
     conversations[id] = {
         title: 'New Thread',
         messages: [],
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        pinned: false
     };
     if (currentUser) saveToStorage();
     loadThread(id);
 }
+
 
 function loadThread(id) {
     currentThreadId = id;
@@ -523,6 +550,7 @@ function loadThread(id) {
         });
     }
     renderSidebar();
+    updateScrollLatestButton();
 }
 
 function deleteThread(id, event) {
@@ -540,6 +568,32 @@ function deleteThread(id, event) {
     }
 }
 
+function togglePinThread(id, event) {
+    event.stopPropagation();
+    if (!conversations[id]) return;
+    conversations[id].pinned = !conversations[id].pinned;
+    conversations[id].timestamp = Date.now();
+    saveToStorage();
+    renderSidebar();
+}
+
+function renameThread(id, event) {
+    event.stopPropagation();
+    const thread = conversations[id];
+    if (!thread) return;
+
+    const nextTitle = window.prompt('Rename thread', thread.title || 'New Thread');
+    if (nextTitle === null) return;
+
+    const cleanTitle = nextTitle.trim();
+    if (!cleanTitle) return;
+
+    thread.title = cleanTitle.slice(0, 80);
+    thread.timestamp = Date.now();
+    saveToStorage();
+    renderSidebar();
+}
+
 function saveToStorage() {
     if (currentUser) localStorage.setItem(`threads_${currentUser.email}`, JSON.stringify(conversations));
 }
@@ -549,26 +603,61 @@ function renderSidebar() {
     historyList.innerHTML = '';
     historyList.appendChild(label);
 
-    // Sort threads by timestamp descending
-    const sortedIds = Object.keys(conversations).sort((a, b) => 
-        conversations[b].timestamp - conversations[a].timestamp
-    );
+    const normalizedQuery = threadSearchQuery.trim().toLowerCase();
+    const sortedIds = Object.keys(conversations)
+        .filter(id => {
+            if (!normalizedQuery) return true;
+            const thread = conversations[id];
+            const searchable = [
+                thread.title,
+                ...(thread.messages || []).map(msg => msg.text)
+            ].join(' ').toLowerCase();
+            return searchable.includes(normalizedQuery);
+        })
+        .sort((a, b) => {
+            const pinnedDelta = Number(!!conversations[b].pinned) - Number(!!conversations[a].pinned);
+            if (pinnedDelta !== 0) return pinnedDelta;
+            return conversations[b].timestamp - conversations[a].timestamp;
+        });
+
+    if (sortedIds.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'empty-history';
+        empty.textContent = 'No matching threads';
+        historyList.appendChild(empty);
+        return;
+    }
 
     sortedIds.forEach(id => {
         const thread = conversations[id];
         const item = document.createElement('div');
-        item.className = `history-item ${id === currentThreadId ? 'active' : ''}`;
+        item.className = `history-item ${id === currentThreadId ? 'active' : ''} ${thread.pinned ? 'pinned' : ''}`;
         item.onclick = () => loadThread(id);
 
         const titleSpan = document.createElement('span');
-        titleSpan.textContent = thread.title;
+        titleSpan.textContent = `${thread.pinned ? '★ ' : ''}${thread.title}`;
+
+        const pinBtn = document.createElement('button');
+        pinBtn.textContent = thread.pinned ? '★' : '☆';
+        pinBtn.className = 'thread-action-btn';
+        pinBtn.title = thread.pinned ? 'Unpin thread' : 'Pin thread';
+        pinBtn.onclick = (e) => togglePinThread(id, e);
+
+        const renameBtn = document.createElement('button');
+        renameBtn.textContent = '✎';
+        renameBtn.className = 'thread-action-btn';
+        renameBtn.title = 'Rename thread';
+        renameBtn.onclick = (e) => renameThread(id, e);
 
         const delBtn = document.createElement('button');
         delBtn.innerHTML = '✕';
         delBtn.className = 'delete-thread-btn';
+        delBtn.title = 'Delete thread';
         delBtn.onclick = (e) => deleteThread(id, e);
 
         item.appendChild(titleSpan);
+        item.appendChild(pinBtn);
+        item.appendChild(renameBtn);
         item.appendChild(delBtn);
         historyList.appendChild(item);
     });
@@ -582,11 +671,89 @@ document.addEventListener('click', (e) => {
     }
 });
 
+function expandSlashCommand(message) {
+    const commandMap = {
+        '/summarize': 'Summarize this clearly with key points, decisions, and action items:',
+        '/code': 'Help me solve this as a senior software engineer. Include code, reasoning, and edge cases:',
+        '/plan': 'Turn this into a practical step-by-step plan with priorities and next actions:',
+        '/translate': 'Translate this and preserve the meaning, tone, and formatting:',
+        '/improve': 'Improve this for clarity, structure, tone, and impact:'
+    };
+
+    const trimmed = (message || '').trim();
+    const lowered = trimmed.toLowerCase();
+
+    // Built-in helper
+    if (lowered === '/help') {
+        return getHelpText();
+    }
+
+    // Basic slash commands handled client-side
+    if (lowered.startsWith('/threads')) {
+        return getThreadsText();
+    }
+
+    if (lowered.startsWith('/clear')) {
+        return '__MIKU_CLEAR__';
+    }
+
+    if (lowered.startsWith('/export')) {
+        return '__MIKU_EXPORT__';
+    }
+
+    const command = Object.keys(commandMap).find(key => lowered.startsWith(key));
+    if (!command) return message;
+
+    const rest = trimmed.slice(command.length).trim();
+    return `${commandMap[command]}\n\n${rest || 'Ask me for the content if I have not provided it yet.'}`;
+}
+
+function getHelpText() {
+    return [
+        'MIKU Help',
+        '',
+        'Slash commands:',
+        '- /help : show this help',
+        '- /threads : list recent threads',
+        '- /export : export the current thread',
+        '- /clear : clear all saved chat threads for this account',
+        '',
+        'Prompt shortcuts:',
+        '- /summarize <text>',
+        '- /code <task>',
+        '- /plan <goal>',
+        '- /translate <text>',
+        '- /improve <text>',
+        '',
+        'Tip: You can mix these with normal chat messages.'
+    ].join('\n');
+}
+
+function getThreadsText() {
+    const ids = Object.keys(conversations || {});
+    if (!ids.length) return 'No threads yet. Use “New Thread” to start.';
+
+    const sortedIds = ids
+        .map(id => ({ id, t: conversations[id]?.timestamp || 0, pinned: !!conversations[id]?.pinned }))
+        .sort((a, b) => Number(b.pinned) - Number(a.pinned) || (b.t - a.t))
+        .slice(0, 10);
+
+    const lines = sortedIds.map((x, idx) => {
+        const thread = conversations[x.id];
+        const title = thread?.title || 'Untitled';
+        return `${idx + 1}. ${x.pinned ? '★ ' : ''}${title}`;
+    });
+
+    return ['Recent Threads:', ...lines, '', 'Use the sidebar to open a thread.'].join('\n');
+}
+
+
 async function sendMessage(overrideMessage = null, options = {}) {
-    const message = (typeof overrideMessage === 'string') ? overrideMessage : userInput.value.trim();
+    const rawMessage = (typeof overrideMessage === 'string') ? overrideMessage : userInput.value.trim();
+    const message = expandSlashCommand(rawMessage);
     const shouldAddUserMessage = options.addUserMessage !== false;
     
-    if (!message) return;
+    if (!rawMessage) return;
 
     // Hide welcome state (Greeting and Quick Actions) on the first message
     if (welcomeState && welcomeState.style.display !== 'none') {
@@ -603,12 +770,13 @@ async function sendMessage(overrideMessage = null, options = {}) {
     
     // Add user message to chat
     if (shouldAddUserMessage) {
-        addMessage(message, 'user');
+        addMessage(rawMessage, 'user');
     }
     
     // Clear input
     userInput.value = '';
     userInput.style.height = 'auto';
+    updateInputCount();
     
     // Show loading indicator
     const loadingMsg = addMessage('', 'assistant', false);
@@ -757,6 +925,7 @@ function addMessage(text, sender, saveToState = true) {
     
     // Scroll to bottom
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    updateScrollLatestButton();
     
     return messageDiv;
 }
@@ -779,6 +948,18 @@ function regenerateLastAssistantReply() {
     loadThread(currentThreadId);
     sendMessage(lastUserMessage.text, { addUserMessage: false });
 }
+
+function updateScrollLatestButton() {
+    if (!scrollLatestBtn) return;
+    const distanceFromBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight;
+    scrollLatestBtn.classList.toggle('show', distanceFromBottom > 180);
+}
+
+messagesContainer?.addEventListener('scroll', updateScrollLatestButton);
+
+scrollLatestBtn?.addEventListener('click', () => {
+    messagesContainer.scrollTo({ top: messagesContainer.scrollHeight, behavior: 'smooth' });
+});
 
 // Image upload functionality
 const attachBtn = document.getElementById('attachBtn');
@@ -827,6 +1008,7 @@ async function sendMessageWithImage(message, imageData) {
     // Clear input
     userInput.value = '';
     userInput.style.height = 'auto';
+    updateInputCount();
     
     // Show loading indicator
     const loadingMsg = addMessage('', 'assistant', false);
@@ -949,9 +1131,15 @@ function clearAllThreads() {
 // Reset Chat (New Thread)
 if (newChatBtn) {
     newChatBtn.addEventListener('click', () => {
+        // If user is searching, reset filter so the new thread shows immediately.
+        if (threadSearchQuery && threadSearchInput) {
+            threadSearchQuery = '';
+            threadSearchInput.value = '';
+        }
         createNewThread();
     });
 }
+
 
 exportThreadBtn?.addEventListener('click', exportCurrentThread);
 clearThreadsBtn?.addEventListener('click', clearAllThreads);

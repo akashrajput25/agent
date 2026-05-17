@@ -63,6 +63,9 @@
                 </svg>
                 New Thread
             </button>
+            <div class="thread-search">
+                <input id="threadSearchInput" type="search" placeholder="Search threads..." autocomplete="off">
+            </div>
             <nav class="sidebar-nav">
                 <div class="nav-section" id="historyList">
                     <p class="nav-label">Recent</p>
@@ -165,6 +168,7 @@
 
                 <!-- Messages Container -->
                 <div class="messages" id="messagesContainer"></div>
+                <button class="scroll-latest-btn" id="scrollLatestBtn" type="button">Latest</button>
 
                 <!-- Welcome State / Quick Actions -->
                 <div class="welcome-state" id="welcomeState">
@@ -257,6 +261,10 @@
                                 </svg>
                             </button>
                         </div>
+                    </div>
+                    <div class="input-meta">
+                        <span id="inputCount">0 characters</span>
+                        <span>Enter to send · Shift+Enter for new line</span>
                     </div>
                 </div>
             </div>
