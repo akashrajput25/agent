@@ -1,7 +1,9 @@
-// If the page is opened via file:// (origin === 'null'), default to the backend URL
-const API_BASE_URL = (window.location.protocol === 'file:' || window.location.origin === 'null')
-    ? 'http://localhost:5000'
-    : ''; // Use relative paths when served via Flask
+// Use relative API paths when Flask serves the frontend. If opened from file://
+// or a separate local dev server, call the Flask backend directly.
+const isFlaskOrigin = ['localhost:5000', '127.0.0.1:5000'].includes(window.location.host);
+const API_BASE_URL = (window.location.protocol === 'file:' || window.location.origin === 'null' || !isFlaskOrigin)
+    ? 'http://127.0.0.1:5000'
+    : '';
 
 const messagesContainer = document.getElementById('messagesContainer');
 const userInput = document.getElementById('userInput');
@@ -12,6 +14,11 @@ const modelDisplay = document.getElementById('modelDisplay');
 const modelDropdown = document.getElementById('modelDropdown');
 const newChatBtn = document.getElementById('newChatBtn');
 const errorMessage = document.getElementById('errorMessage');
+const assistantMode = document.getElementById('assistantMode');
+const toneSelect = document.getElementById('toneSelect');
+const lengthSelect = document.getElementById('lengthSelect');
+const creativityRange = document.getElementById('creativityRange');
+const assistantModeLabel = document.getElementById('assistantModeLabel');
 
 // Auth Elements
 const authOverlay = document.getElementById('authOverlay');
@@ -39,9 +46,38 @@ const editAge = document.getElementById('editAge');
 const saveProfileBtn = document.getElementById('saveProfileBtn');
 const cancelProfileEditBtn = document.getElementById('cancelProfileEditBtn'); // Added this line
 const sidebar = document.querySelector('.sidebar');
+const userAvatarDisplay = document.querySelector('.user-avatar');
+const avatarPreview = document.getElementById('avatarPreview');
+const avatarGrid = document.getElementById('avatarGrid');
+const exportThreadBtn = document.getElementById('exportThreadBtn');
+const clearThreadsBtn = document.getElementById('clearThreadsBtn');
 
 let isLoginMode = true;
 let currentUser = JSON.parse(localStorage.getItem('miku_user')) || null;
+const savedAssistantOptions = JSON.parse(localStorage.getItem('miku_assistant_options')) || {};
+let selectedAvatarId = currentUser?.avatarId || 'male-1';
+
+const assistantModeNames = {
+    balanced: 'Balanced assistant',
+    coder: 'Code expert',
+    teacher: 'Tutor mode',
+    researcher: 'Research mode',
+    creative: 'Creative partner',
+    productivity: 'Productivity coach'
+};
+
+const profileAvatars = [
+    { id: 'female-1', gender: 'Female', name: 'Astra', hair: '#2F1D3D', skin: '#F1C7A8', accent: '#FF7AB6', hairStyle: 'bob', accessory: 'headband' },
+    { id: 'female-2', gender: 'Female', name: 'Nova', hair: '#1C2A44', skin: '#DCA987', accent: '#61D6FF', hairStyle: 'side-sweep', accessory: 'glasses' },
+    { id: 'female-3', gender: 'Female', name: 'Mira', hair: '#5A3426', skin: '#F0BFA1', accent: '#A3FFCB', hairStyle: 'long-wave', accessory: 'earrings' },
+    { id: 'female-4', gender: 'Female', name: 'Iris', hair: '#151515', skin: '#B8795F', accent: '#B99CFF', hairStyle: 'bun', accessory: 'bindi' },
+    { id: 'female-5', gender: 'Female', name: 'Zara', hair: '#7B2D45', skin: '#8F5D48', accent: '#FFD166', hairStyle: 'curls', accessory: 'clips' },
+    { id: 'male-1', gender: 'Male', name: 'Kai', hair: '#1B1B1B', skin: '#D9A47F', accent: '#10A37F', hairStyle: 'quiff', facialHair: 'stubble' },
+    { id: 'male-2', gender: 'Male', name: 'Orion', hair: '#3C2A1E', skin: '#E8B994', accent: '#61D6FF', hairStyle: 'side-part', facialHair: 'moustache' },
+    { id: 'male-3', gender: 'Male', name: 'Leo', hair: '#111827', skin: '#9D6B52', accent: '#A3FFCB', hairStyle: 'buzz', facialHair: 'full-beard' },
+    { id: 'male-4', gender: 'Male', name: 'Rey', hair: '#5E4635', skin: '#F1C7A8', accent: '#FF7AB6', hairStyle: 'curly-top', facialHair: 'goatee', accessory: 'glasses' },
+    { id: 'male-5', gender: 'Male', name: 'Arin', hair: '#263238', skin: '#7A4E3B', accent: '#FFD166', hairStyle: 'long-tied', facialHair: 'beard-moustache' }
+];
 
 // Thread State Management
 let conversations = {};
@@ -132,6 +168,8 @@ function checkAuthState() {
     if (currentUser) {
         authOverlay.style.display = 'none';
         userNameDisplay.textContent = currentUser.name;
+        selectedAvatarId = currentUser.avatarId || 'male-1';
+        updateAvatarDisplays();
         updateWelcomeMessage();
         conversations = JSON.parse(localStorage.getItem(`threads_${currentUser.email}`)) || {};
         initApp();
@@ -146,13 +184,135 @@ function updateWelcomeMessage() {
     }
 }
 
+function getAvatarById(id) {
+    return profileAvatars.find(avatar => avatar.id === id) || profileAvatars[5];
+}
+
+function createAvatarSvg(avatar, size = 64) {
+    const hairStyles = {
+        'bob': `
+            <path d="M17 26c0-10 6-16 15-16s15 6 15 16v14c-4 4-8 6-15 6s-11-2-15-6V26z" fill="${avatar.hair}"/>
+            <path d="M19 25c6-7 15-10 26-3" stroke="rgba(255,255,255,.18)" stroke-width="2.2" stroke-linecap="round"/>
+        `,
+        'side-sweep': `
+            <path d="M16 30c1-13 8-20 19-18c8 1 13 7 13 17c-8-6-19-8-32 1z" fill="${avatar.hair}"/>
+            <path d="M19 25c9-9 20-10 28-2" stroke="rgba(255,255,255,.2)" stroke-width="2.4" stroke-linecap="round"/>
+        `,
+        'long-wave': `
+            <path d="M15 25c0-10 7-16 17-16s17 6 17 16v28c-5 3-10 3-15 0c-5 3-11 3-18 0V25z" fill="${avatar.hair}"/>
+            <path d="M18 35c5-4 7-11 5-19M43 35c-5-4-7-11-5-19" stroke="rgba(255,255,255,.18)" stroke-width="2" stroke-linecap="round"/>
+        `,
+        'bun': `
+            <circle cx="32" cy="12" r="7" fill="${avatar.hair}"/>
+            <path d="M17 27c1-11 7-17 15-17s14 6 15 17c-7-3-23-3-30 0z" fill="${avatar.hair}"/>
+            <path d="M23 18c5 4 13 4 18 0" stroke="rgba(255,255,255,.18)" stroke-width="2" stroke-linecap="round"/>
+        `,
+        'curls': `
+            <path d="M15 27c0-10 7-17 17-17s17 7 17 17v18c-4 3-8 4-13 3c3-4 1-8-4-8s-7 4-4 8c-5 1-9 0-13-3V27z" fill="${avatar.hair}"/>
+            <circle cx="20" cy="24" r="5" fill="${avatar.hair}"/><circle cx="28" cy="17" r="5" fill="${avatar.hair}"/><circle cx="39" cy="20" r="5" fill="${avatar.hair}"/><circle cx="45" cy="29" r="5" fill="${avatar.hair}"/>
+        `,
+        'quiff': `
+            <path d="M17 25c1-9 7-15 15-15c6 0 10 2 14 7c-9-2-16 0-24 7c7-1 14-1 25 3c-6-8-21-8-30-2z" fill="${avatar.hair}"/>
+            <path d="M23 20c4-7 11-9 20-4" stroke="rgba(255,255,255,.22)" stroke-width="2.3" stroke-linecap="round"/>
+        `,
+        'side-part': `
+            <path d="M17 24c2-9 8-14 16-14s13 5 15 14c-8-4-17-5-31 0z" fill="${avatar.hair}"/>
+            <path d="M31 13c-2 5-7 8-13 10" stroke="rgba(255,255,255,.24)" stroke-width="2" stroke-linecap="round"/>
+        `,
+        'buzz': `
+            <path d="M18 24c2-8 7-12 14-12s12 4 14 12c-8-3-20-3-28 0z" fill="${avatar.hair}"/>
+            <path d="M20 21c6-3 18-3 24 0" stroke="rgba(255,255,255,.16)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2 3"/>
+        `,
+        'curly-top': `
+            <path d="M17 26c0-9 6-15 15-15s15 6 15 15c-8-5-22-5-30 0z" fill="${avatar.hair}"/>
+            <circle cx="22" cy="20" r="4" fill="${avatar.hair}"/><circle cx="29" cy="16" r="4" fill="${avatar.hair}"/><circle cx="37" cy="17" r="4" fill="${avatar.hair}"/><circle cx="44" cy="22" r="4" fill="${avatar.hair}"/>
+        `,
+        'long-tied': `
+            <path d="M16 25c1-10 7-16 16-16s15 6 16 16v21c-5 5-27 5-32 0V25z" fill="${avatar.hair}"/>
+            <path d="M39 42c5 4 8 8 8 13" stroke="${avatar.hair}" stroke-width="5" stroke-linecap="round"/>
+            <path d="M18 26c7-7 17-11 29-2" stroke="rgba(255,255,255,.18)" stroke-width="2.2" stroke-linecap="round"/>
+        `
+    };
+    const facialHairStyles = {
+        'stubble': `<path d="M23 37c5 5 13 5 18 0" stroke="${avatar.hair}" stroke-opacity=".45" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 4"/>`,
+        'moustache': `<path d="M24 35c3-3 6-3 8 0c2-3 5-3 8 0" stroke="${avatar.hair}" stroke-width="3" stroke-linecap="round"/>`,
+        'full-beard': `<path d="M20 35c2 12 8 16 12 16s10-4 12-16c-6 5-18 5-24 0z" fill="${avatar.hair}" fill-opacity=".78"/><path d="M27 37c2 2 8 2 10 0" stroke="${avatar.skin}" stroke-width="2" stroke-linecap="round"/>`,
+        'goatee': `<path d="M28 40c1 5 7 5 8 0c-2 1-6 1-8 0z" fill="${avatar.hair}"/><path d="M25 35c2-2 5-2 7 0c2-2 5-2 7 0" stroke="${avatar.hair}" stroke-width="2.4" stroke-linecap="round"/>`,
+        'beard-moustache': `<path d="M23 35c3-3 6-3 9 0c3-3 6-3 9 0" stroke="${avatar.hair}" stroke-width="3" stroke-linecap="round"/><path d="M21 38c3 9 8 13 11 13s8-4 11-13c-7 4-15 4-22 0z" fill="${avatar.hair}" fill-opacity=".72"/>`
+    };
+    const accessories = {
+        'headband': `<path d="M18 23c8-6 20-6 28 0" stroke="${avatar.accent}" stroke-width="3" stroke-linecap="round"/>`,
+        'glasses': `<path d="M22 30h8M34 30h8M30 30h4" stroke="#172026" stroke-width="1.6" stroke-linecap="round"/><rect x="21" y="27" width="9" height="7" rx="3" stroke="#172026" stroke-width="1.5"/><rect x="34" y="27" width="9" height="7" rx="3" stroke="#172026" stroke-width="1.5"/>`,
+        'earrings': `<circle cx="18" cy="35" r="2" fill="${avatar.accent}"/><circle cx="46" cy="35" r="2" fill="${avatar.accent}"/>`,
+        'bindi': `<circle cx="32" cy="25" r="1.6" fill="${avatar.accent}"/>`,
+        'clips': `<path d="M20 22l5 2M44 22l-5 2" stroke="${avatar.accent}" stroke-width="2.2" stroke-linecap="round"/>`
+    };
+    const hairMarkup = hairStyles[avatar.hairStyle] || hairStyles.quiff;
+    const facialHairMarkup = avatar.facialHair ? facialHairStyles[avatar.facialHair] || '' : '';
+    const accessoryMarkup = avatar.accessory ? accessories[avatar.accessory] || '' : '';
+
+    return `
+        <svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect width="64" height="64" rx="20" fill="${avatar.accent}" fill-opacity=".16"/>
+            <circle cx="32" cy="32" r="27" fill="${avatar.accent}" fill-opacity=".12" stroke="${avatar.accent}" stroke-opacity=".5"/>
+            ${hairMarkup}
+            <circle cx="32" cy="31" r="14" fill="${avatar.skin}"/>
+            <path d="M18 59c2-10 8-16 14-16s12 6 14 16H18z" fill="${avatar.accent}"/>
+            <circle cx="27" cy="30" r="1.7" fill="#172026"/>
+            <circle cx="37" cy="30" r="1.7" fill="#172026"/>
+            ${accessoryMarkup}
+            ${facialHairMarkup}
+            <path d="M28 38c2.2 1.8 5.8 1.8 8 0" stroke="#172026" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="49" cy="49" r="6" fill="#0B0D10" stroke="${avatar.accent}" stroke-width="2"/>
+            <path d="M46.5 49h5M49 46.5v5" stroke="${avatar.accent}" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+    `;
+}
+
+function getCurrentAvatarMarkup(size = 64) {
+    return createAvatarSvg(getAvatarById(currentUser?.avatarId || selectedAvatarId), size);
+}
+
+function updateAvatarDisplays() {
+    if (userAvatarDisplay) {
+        userAvatarDisplay.innerHTML = currentUser ? getCurrentAvatarMarkup(40) : '👤';
+    }
+    if (avatarPreview) {
+        avatarPreview.innerHTML = createAvatarSvg(getAvatarById(selectedAvatarId), 72);
+    }
+}
+
+function renderAvatarGrid() {
+    if (!avatarGrid) return;
+
+    avatarGrid.innerHTML = '';
+    profileAvatars.forEach(avatar => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `avatar-choice ${avatar.id === selectedAvatarId ? 'selected' : ''}`;
+        button.setAttribute('role', 'radio');
+        button.setAttribute('aria-checked', avatar.id === selectedAvatarId ? 'true' : 'false');
+        button.title = `${avatar.name} (${avatar.gender})`;
+        button.innerHTML = `${createAvatarSvg(avatar, 52)}<span>${avatar.name}</span>`;
+        button.addEventListener('click', () => {
+            selectedAvatarId = avatar.id;
+            renderAvatarGrid();
+            updateAvatarDisplays();
+        });
+        avatarGrid.appendChild(button);
+    });
+}
+
 function openProfileEditModal() {
     if (!currentUser) return;
 
+    selectedAvatarId = currentUser.avatarId || 'male-1';
     editName.value = currentUser.name || '';
     editEmail.value = currentUser.email || '';
     editMobileNumber.value = currentUser.mobileNumber || '';
     editAge.value = currentUser.age || '';
+    renderAvatarGrid();
+    updateAvatarDisplays();
     profileEditError.textContent = ''; // Clear previous errors
     profileEditOverlay.classList.add('show-modal');
 }
@@ -173,7 +333,8 @@ async function saveProfileChanges() {
         email: currentUser.email,
         name: newName,
         mobile_number: newMobileNumber || null, // Send null if empty
-        age: isNaN(newAge) ? null : newAge // Send null if not a valid number
+        age: isNaN(newAge) ? null : newAge, // Send null if not a valid number
+        avatar_id: selectedAvatarId
     };
 
     try {
@@ -189,6 +350,8 @@ async function saveProfileChanges() {
             currentUser = { ...currentUser, ...data.user };
             localStorage.setItem('miku_user', JSON.stringify(currentUser));
             userNameDisplay.textContent = currentUser.name;
+            selectedAvatarId = currentUser.avatarId || selectedAvatarId;
+            updateAvatarDisplays();
             updateWelcomeMessage();
             closeProfileEditModal();
         } else {
@@ -224,6 +387,7 @@ logoutBtn?.addEventListener('click', () => {
         // localStorage.removeItem(`threads_${currentUser?.email}`);
         authOverlay.style.display = 'flex';
         userNameDisplay.textContent = 'Guest User';
+        if (userAvatarDisplay) userAvatarDisplay.textContent = '👤';
         conversations = {};
         currentThreadId = null;
         messagesContainer.innerHTML = '';
@@ -252,6 +416,36 @@ userInput.addEventListener('keypress', (e) => {
 userInput.addEventListener('input', (e) => {
     e.target.style.height = 'auto';
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+});
+
+function getAssistantOptions() {
+    return {
+        mode: assistantMode?.value || 'balanced',
+        tone: toneSelect?.value || 'friendly',
+        length: lengthSelect?.value || 'normal',
+        creativity: Number(creativityRange?.value || 55)
+    };
+}
+
+function saveAssistantOptions() {
+    const options = getAssistantOptions();
+    localStorage.setItem('miku_assistant_options', JSON.stringify(options));
+    if (assistantModeLabel) {
+        assistantModeLabel.textContent = assistantModeNames[options.mode] || 'Balanced assistant';
+    }
+}
+
+function restoreAssistantOptions() {
+    if (assistantMode && savedAssistantOptions.mode) assistantMode.value = savedAssistantOptions.mode;
+    if (toneSelect && savedAssistantOptions.tone) toneSelect.value = savedAssistantOptions.tone;
+    if (lengthSelect && savedAssistantOptions.length) lengthSelect.value = savedAssistantOptions.length;
+    if (creativityRange && savedAssistantOptions.creativity !== undefined) creativityRange.value = savedAssistantOptions.creativity;
+    saveAssistantOptions();
+}
+
+[assistantMode, toneSelect, lengthSelect, creativityRange].forEach(control => {
+    control?.addEventListener('change', saveAssistantOptions);
+    control?.addEventListener('input', saveAssistantOptions);
 });
 
 // Toggle Model Dropdown
@@ -283,6 +477,7 @@ document.querySelectorAll('.model-option').forEach(option => {
 // Initialize default model on page load
 window.addEventListener('DOMContentLoaded', () => {
     validateAuthFields();
+    restoreAssistantOptions();
     checkAuthState();
 });
 
@@ -387,8 +582,9 @@ document.addEventListener('click', (e) => {
     }
 });
 
-async function sendMessage(overrideMessage = null) {
+async function sendMessage(overrideMessage = null, options = {}) {
     const message = (typeof overrideMessage === 'string') ? overrideMessage : userInput.value.trim();
+    const shouldAddUserMessage = options.addUserMessage !== false;
     
     if (!message) return;
 
@@ -406,14 +602,16 @@ async function sendMessage(overrideMessage = null) {
     sendBtn.disabled = true;
     
     // Add user message to chat
-    addMessage(message, 'user');
+    if (shouldAddUserMessage) {
+        addMessage(message, 'user');
+    }
     
     // Clear input
     userInput.value = '';
     userInput.style.height = 'auto';
     
     // Show loading indicator
-    const loadingMsg = addMessage('', 'assistant');
+    const loadingMsg = addMessage('', 'assistant', false);
     const loadingContent = loadingMsg.querySelector('.message-content');
     loadingContent.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
     
@@ -426,7 +624,8 @@ async function sendMessage(overrideMessage = null) {
             },
             body: JSON.stringify({ 
                 message: message,
-                model: modelBtn.getAttribute('data-selected-model') || 'openrouter/free'
+                model: modelBtn.getAttribute('data-selected-model') || 'openrouter/free',
+                assistantOptions: getAssistantOptions()
             })
         });
         
@@ -493,7 +692,11 @@ function addMessage(text, sender, saveToState = true) {
     // Create avatar
     const avatarDiv = document.createElement('div');
     avatarDiv.className = 'avatar';
-    avatarDiv.textContent = sender === 'user' ? '👤' : '🤖';
+    if (sender === 'user' && currentUser) {
+        avatarDiv.innerHTML = getCurrentAvatarMarkup(32);
+    } else {
+        avatarDiv.textContent = sender === 'user' ? '👤' : '🤖';
+    }
     
     // Create message wrapper
     const wrapperDiv = document.createElement('div');
@@ -516,6 +719,36 @@ function addMessage(text, sender, saveToState = true) {
     }
     
     wrapperDiv.appendChild(contentDiv);
+
+    if (sender === 'assistant' && text !== '') {
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'message-actions';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'message-action-btn';
+        copyBtn.type = 'button';
+        copyBtn.textContent = 'Copy';
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(text);
+                copyBtn.textContent = 'Copied';
+                setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1200);
+            } catch (error) {
+                copyBtn.textContent = 'Failed';
+                setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1200);
+            }
+        });
+
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'message-action-btn';
+        retryBtn.type = 'button';
+        retryBtn.textContent = 'Retry';
+        retryBtn.addEventListener('click', () => regenerateLastAssistantReply());
+
+        actionsDiv.appendChild(copyBtn);
+        actionsDiv.appendChild(retryBtn);
+        wrapperDiv.appendChild(actionsDiv);
+    }
     
     messageDiv.appendChild(avatarDiv);
     messageDiv.appendChild(wrapperDiv);
@@ -526,6 +759,25 @@ function addMessage(text, sender, saveToState = true) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
     
     return messageDiv;
+}
+
+function regenerateLastAssistantReply() {
+    if (!currentThreadId) return;
+    const thread = conversations[currentThreadId];
+    if (!thread || thread.messages.length === 0) return;
+
+    const lastUserMessage = [...thread.messages].reverse().find(msg => msg.sender === 'user');
+    if (!lastUserMessage) return;
+
+    for (let i = thread.messages.length - 1; i >= 0; i--) {
+        if (thread.messages[i].sender === 'assistant') {
+            thread.messages.splice(i, 1);
+            break;
+        }
+    }
+    saveToStorage();
+    loadThread(currentThreadId);
+    sendMessage(lastUserMessage.text, { addUserMessage: false });
 }
 
 // Image upload functionality
@@ -577,7 +829,7 @@ async function sendMessageWithImage(message, imageData) {
     userInput.style.height = 'auto';
     
     // Show loading indicator
-    const loadingMsg = addMessage('', 'assistant');
+    const loadingMsg = addMessage('', 'assistant', false);
     const loadingContent = loadingMsg.querySelector('.message-content');
     loadingContent.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
     
@@ -591,7 +843,8 @@ async function sendMessageWithImage(message, imageData) {
             body: JSON.stringify({ 
                 message: message,
                 model: modelBtn.getAttribute('data-selected-model') || 'openrouter/free',
-                image: imageData
+                image: imageData,
+                assistantOptions: getAssistantOptions()
             })
         });
         
@@ -648,12 +901,60 @@ document.querySelectorAll('.quick-action-btn').forEach(btn => {
     });
 });
 
+document.querySelectorAll('.prompt-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const insert = btn.getAttribute('data-insert') || '';
+        const separator = userInput.value && !userInput.value.endsWith(' ') ? ' ' : '';
+        userInput.value = `${userInput.value}${separator}${insert}`;
+        userInput.focus();
+        userInput.dispatchEvent(new Event('input'));
+    });
+});
+
+function exportCurrentThread() {
+    if (!currentThreadId || !conversations[currentThreadId]) {
+        return;
+    }
+
+    const thread = conversations[currentThreadId];
+    const lines = [
+        `MIKU Chat Export`,
+        `Title: ${thread.title}`,
+        `Exported: ${new Date().toLocaleString()}`,
+        '',
+        ...thread.messages.map(msg => `${msg.sender.toUpperCase()}:\n${msg.text}`)
+    ];
+    const blob = new Blob([lines.join('\n\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${thread.title.replace(/[^\w-]+/g, '_').slice(0, 40) || 'miku-chat'}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
+function clearAllThreads() {
+    if (!currentUser) return;
+    const confirmed = window.confirm('Clear all saved chat threads for this account?');
+    if (!confirmed) return;
+
+    conversations = {};
+    localStorage.removeItem(`threads_${currentUser.email}`);
+    messagesContainer.innerHTML = '';
+    createNewThread();
+}
+
 // Reset Chat (New Thread)
 if (newChatBtn) {
     newChatBtn.addEventListener('click', () => {
         createNewThread();
     });
 }
+
+exportThreadBtn?.addEventListener('click', exportCurrentThread);
+clearThreadsBtn?.addEventListener('click', clearAllThreads);
 
 // Check backend health on page load and initialize model
 window.addEventListener('load', async () => {
@@ -668,31 +969,3 @@ window.addEventListener('load', async () => {
     }
 });
 
-// Shooting Stars Background Logic
-function createShootingStar() {
-    const container = document.getElementById('starsContainer');
-    if (!container) return;
-
-    const star = document.createElement('div');
-    star.className = 'shooting-star';
-    
-    // Designer RGB: Using HSL to get vibrant colors across the spectrum
-    const hue = Math.floor(Math.random() * 360);
-    const color = `hsl(${hue}, 80%, 70%)`;
-    
-    const startX = Math.random() * (window.innerWidth + 400);
-    const duration = Math.random() * 2000 + 1500;
-    const size = Math.random() * 100 + 150; // Length of the tail
-
-    star.style.setProperty('--star-color', color);
-    star.style.width = `${size}px`;
-    star.style.left = `${startX}px`;
-    star.style.top = `${Math.random() * -100}px`;
-    star.style.animation = `shooting ${duration}ms ease-out forwards`;
-
-    container.appendChild(star);
-    setTimeout(() => star.remove(), duration);
-}
-
-// Initialize animations
-setInterval(createShootingStar, 800);

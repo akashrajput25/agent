@@ -30,17 +30,28 @@
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
-                    <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon">
-                        <!-- Professional Man Portrait -->
-                        <path d="M24 44c11 0 20-9 20-20S35 4 24 4 4 13 4 24s9 20 20 20z" fill="rgba(255,255,255,0.03)" stroke="currentColor" stroke-width="1"/>
-                        <path d="M14 16c0-5 4-9 10-9s10 4 10 9v3H14v-3z" fill="currentColor" fill-opacity="0.8"/> <!-- Hair -->
-                        <path d="M34 19c0 5.5-4.5 10-10 10s-10-4.5-10-10" stroke="currentColor" stroke-width="2"/> <!-- Jaw -->
-                        <path d="M14 22c1 6 4 10 10 10s9-4 10-10" fill="currentColor" fill-opacity="0.3"/> <!-- Beard Base -->
-                        <path d="M16 28c2 4 5 6 8 6s6-2 8-6" stroke="currentColor" stroke-width="1.5" fill="currentColor" fill-opacity="0.2"/> <!-- Beard Detail -->
-                        <circle cx="19" cy="20" r="1.2" fill="currentColor"/> <!-- Eye L -->
-                        <circle cx="29" cy="20" r="1.2" fill="currentColor"/> <!-- Eye R -->
-                        <path d="M20 25c1 1 3 1 4 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/> <!-- Smile -->
-                        <path d="M18 36l6 4 6-4" stroke="currentColor" stroke-width="2" fill="none"/> <!-- Collar -->
+                    <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" class="logo-icon" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="mikuCoreGradient" x1="8" y1="6" x2="42" y2="44" gradientUnits="userSpaceOnUse">
+                                <stop offset="0" stop-color="#61D6FF"/>
+                                <stop offset="0.48" stop-color="#10A37F"/>
+                                <stop offset="1" stop-color="#A3FFCB"/>
+                            </linearGradient>
+                            <radialGradient id="mikuGlowGradient" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(24 24) rotate(90) scale(21)">
+                                <stop stop-color="#10A37F" stop-opacity="0.42"/>
+                                <stop offset="1" stop-color="#10A37F" stop-opacity="0"/>
+                            </radialGradient>
+                        </defs>
+                        <rect x="5" y="5" width="38" height="38" rx="12" fill="url(#mikuGlowGradient)" stroke="url(#mikuCoreGradient)" stroke-width="1.5"/>
+                        <path d="M13 31V17.5C13 16.1 14.7 15.4 15.7 16.4L24 24.7L32.3 16.4C33.3 15.4 35 16.1 35 17.5V31" stroke="url(#mikuCoreGradient)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M17 34H31" stroke="currentColor" stroke-opacity="0.7" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M16 12.5L24 9L32 12.5" stroke="currentColor" stroke-opacity="0.42" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M11.5 24H7.5M40.5 24H36.5M24 7.5V11.5M24 36.5V40.5" stroke="url(#mikuCoreGradient)" stroke-width="1.5" stroke-linecap="round"/>
+                        <circle cx="13" cy="24" r="2.2" fill="#61D6FF"/>
+                        <circle cx="24" cy="13" r="2.2" fill="#A3FFCB"/>
+                        <circle cx="35" cy="24" r="2.2" fill="#10A37F"/>
+                        <circle cx="24" cy="35" r="2.2" fill="#FFFFFF" fill-opacity="0.9"/>
+                        <circle cx="24" cy="24" r="3.6" fill="#0B0D10" stroke="url(#mikuCoreGradient)" stroke-width="1.7"/>
                     </svg>
                     <span class="logo-text" data-tooltip="Multilingual Interactive Knowledge&#10;User-interface">MIKU</span>
                 </div>
@@ -68,6 +79,8 @@
                     </div>
                 </div>
                 <div style="margin-top:12px; display:flex; gap:8px;">
+                    <button id="exportThreadBtn" class="sidebar-tool-btn" type="button">Export</button>
+                    <button id="clearThreadsBtn" class="sidebar-tool-btn danger" type="button">Clear</button>
                     <button id="logoutBtn" class="auth-btn" style="flex:1">Logout</button>
                 </div>
             </div>
@@ -85,6 +98,10 @@
                             <line x1="3" y1="18" x2="21" y2="18"></line>
                         </svg>
                     </button>
+                    <div class="assistant-status">
+                        <span class="status-dot"></span>
+                        <span id="assistantModeLabel">Balanced assistant</span>
+                    </div>
                     <div class="header-spacer"></div>
                     <div class="model-selector-wrapper">
                         <button class="model-selector" id="modelBtn">
@@ -111,22 +128,65 @@
                     <div class="header-spacer"></div>
                 </div>
 
+                <section class="assistant-options" aria-label="Assistant options">
+                    <div class="option-group">
+                        <label for="assistantMode">Mode</label>
+                        <select id="assistantMode" class="option-select">
+                            <option value="balanced">Balanced</option>
+                            <option value="coder">Code Expert</option>
+                            <option value="teacher">Tutor</option>
+                            <option value="researcher">Research</option>
+                            <option value="creative">Creative</option>
+                            <option value="productivity">Productivity</option>
+                        </select>
+                    </div>
+                    <div class="option-group">
+                        <label for="toneSelect">Tone</label>
+                        <select id="toneSelect" class="option-select">
+                            <option value="friendly">Friendly</option>
+                            <option value="direct">Direct</option>
+                            <option value="professional">Professional</option>
+                            <option value="simple">Simple</option>
+                        </select>
+                    </div>
+                    <div class="option-group">
+                        <label for="lengthSelect">Length</label>
+                        <select id="lengthSelect" class="option-select">
+                            <option value="normal">Normal</option>
+                            <option value="short">Short</option>
+                            <option value="detailed">Detailed</option>
+                        </select>
+                    </div>
+                    <div class="option-group creativity-group">
+                        <label for="creativityRange">Creativity</label>
+                        <input id="creativityRange" type="range" min="0" max="100" value="55">
+                    </div>
+                </section>
+
                 <!-- Messages Container -->
                 <div class="messages" id="messagesContainer"></div>
 
                 <!-- Welcome State / Quick Actions -->
                 <div class="welcome-state" id="welcomeState">
                     <h1 class="welcome-title" id="welcomeTitle">Hello there!</h1>
-                    <p class="welcome-subtitle">How can I help you today?</p>
+                    <p class="welcome-subtitle">Choose a mode or start with one of these assistant tasks.</p>
                     
                     <div class="quick-actions" id="quickActionsContainer">
-                        <button class="quick-action-btn" data-prompt="What is the weather in San Francisco?">
-                            <span class="action-title">What's the weather</span>
-                            <span class="action-subtitle">in San Francisco?</span>
+                        <button class="quick-action-btn" data-prompt="Help me plan my day. Ask me for my tasks first, then prioritize them.">
+                            <span class="action-title">Plan my day</span>
+                            <span class="action-subtitle">Prioritize tasks and next steps</span>
                         </button>
-                        <button class="quick-action-btn" data-prompt="Explain React hooks like useState and useEffect">
-                            <span class="action-title">Explain React hooks</span>
-                            <span class="action-subtitle">like useState and useEffect</span>
+                        <button class="quick-action-btn" data-prompt="Review this code for bugs, readability, and better structure. Ask me to paste the code.">
+                            <span class="action-title">Review code</span>
+                            <span class="action-subtitle">Find bugs and improvements</span>
+                        </button>
+                        <button class="quick-action-btn" data-prompt="Summarize the following content into key points, decisions, and action items. Ask me to paste the content.">
+                            <span class="action-title">Summarize text</span>
+                            <span class="action-subtitle">Key points and action items</span>
+                        </button>
+                        <button class="quick-action-btn" data-prompt="Act as my learning coach. Explain this topic simply, then quiz me. Ask me for the topic.">
+                            <span class="action-title">Teach me</span>
+                            <span class="action-subtitle">Simple explanation plus quiz</span>
                         </button>
                     </div>
                 </div>
@@ -134,6 +194,14 @@
                 <div class="profile-edit-overlay" id="profileEditOverlay">
                     <div class="profile-edit-card">
                         <h2>Edit Profile</h2>
+                        <div class="avatar-editor">
+                            <div class="avatar-preview" id="avatarPreview" aria-hidden="true">👤</div>
+                            <div>
+                                <p class="avatar-editor-title">Profile avatar</p>
+                                <p class="avatar-editor-subtitle">Choose one of 10 assistant-ready avatars.</p>
+                            </div>
+                        </div>
+                        <div class="avatar-grid" id="avatarGrid" role="radiogroup" aria-label="Choose profile avatar"></div>
                         <div class="input-group">
                             <label for="editName">Name</label>
                             <input id="editName" class="modal-input" type="text" placeholder="Your name">
@@ -161,6 +229,13 @@
                 <!-- Input Area -->
                 <div class="input-area">
                     <div id="errorMessage" class="error-message"></div>
+                    <div class="prompt-toolbar" aria-label="Prompt shortcuts">
+                        <button class="prompt-chip" data-insert="/summarize ">Summarize</button>
+                        <button class="prompt-chip" data-insert="/code ">Code</button>
+                        <button class="prompt-chip" data-insert="/plan ">Plan</button>
+                        <button class="prompt-chip" data-insert="/translate ">Translate</button>
+                        <button class="prompt-chip" data-insert="/improve ">Improve</button>
+                    </div>
                     <div class="input-container">
                         <input type="file" id="imageInput" accept="image/*" style="display: none;">
                         <textarea 
