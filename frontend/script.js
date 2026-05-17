@@ -28,6 +28,7 @@ const editProfileBtn = document.getElementById('editProfileBtn'); // <--- ADDED 
 // Sidebar and Mobile Menu Elements
 const menuToggle = document.getElementById('menuToggle'); // Declare menuToggle here
 const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+const logoutBtn = document.getElementById('logoutBtn');
 // Profile Edit Modal Elements
 const profileEditOverlay = document.getElementById('profileEditOverlay');
 const profileEditError = document.getElementById('profileEditError');
@@ -174,6 +175,23 @@ menuToggle?.addEventListener('click', (e) => {
 
 closeSidebarBtn?.addEventListener('click', () => {
     sidebar.classList.remove('mobile-open');
+});
+
+logoutBtn?.addEventListener('click', () => {
+    // Clear user session locally and show auth overlay
+    if (currentUser) {
+        localStorage.removeItem('miku_user');
+        currentUser = null;
+        // Optionally clear user threads from storage
+        // localStorage.removeItem(`threads_${currentUser?.email}`);
+        authOverlay.style.display = 'flex';
+        userNameDisplay.textContent = 'Guest User';
+        conversations = {};
+        currentThreadId = null;
+        messagesContainer.innerHTML = '';
+        renderSidebar();
+        createNewThread();
+    }
 });
 
 // Close sidebar when clicking main content on mobile

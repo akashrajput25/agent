@@ -1168,6 +1168,14 @@ body {
     .input-area {
         padding: 16px;
     }
+    /* Prevent focus transform/zoom on mobile which can hide the send button */
+    .input-container:focus-within {
+        transform: none !important;
+        box-shadow: none !important;
+    }
+    .input-actions {
+        z-index: 5;
+    }
     .quick-actions {
         grid-template-columns: 1fr;
     }
