@@ -447,8 +447,9 @@ function addMessage(text, sender, saveToState = true) {
     contentDiv.className = 'message-content';
 
     if (sender === 'assistant' && text !== '') {
-        // Use marked to parse markdown for assistant responses
-        contentDiv.innerHTML = marked.parse(text);
+        // Convert bare image URLs into markdown images so they render inline
+        const textWithImages = text.replace(/(https?:\/\/\S+\.(?:png|jpe?g|gif|webp|svg))/gi, '![]($1)');
+        contentDiv.innerHTML = marked.parse(textWithImages);
         // Apply syntax highlighting to code blocks
         contentDiv.querySelectorAll('pre code').forEach((block) => {
             hljs.highlightElement(block);

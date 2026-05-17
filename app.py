@@ -179,7 +179,31 @@ def chat():
             }), 500
         
         response_data = response.json()
-        ai_response = response_data['choices'][0]['message']['content']
+        raw_content = response_data['choices'][0]['message']['content']
+
+        if isinstance(raw_content, list):
+            ai_response_parts = []
+            for item in raw_content:
+                if isinstance(item, dict):
+                    item_type = item.get('type')
+                    if item_type == 'text':
+                        ai_response_parts.append(item.get('text', ''))
+                    elif item_type == 'image_url':
+                        image_url = item.get('image_url', {}).get('url')
+                        if image_url:
+                            ai_response_parts.append(f"![image]({image_url})")
+                    else:
+                        if 'text' in item:
+                            ai_response_parts.append(item['text'])
+                        elif 'url' in item:
+                            ai_response_parts.append(f"![image]({item['url']})")
+                        else:
+                            ai_response_parts.append(str(item))
+                else:
+                    ai_response_parts.append(str(item))
+            ai_response = "\n\n".join([part for part in ai_response_parts if part])
+        else:
+            ai_response = str(raw_content)
         
         return jsonify({
             "success": True,

@@ -778,6 +778,14 @@ body {
     border: 1px solid var(--border);
 }
 
+.message-content img {
+    max-width: 100%;
+    border-radius: 12px;
+    margin: 12px 0;
+    display: block;
+    object-fit: contain;
+}
+
 .message.user .message-content {
     background-color: var(--accent);
     color: white;
@@ -1107,6 +1115,10 @@ body {
 }
 
 @media (max-width: 768px) {
+    body {
+        overflow: auto;
+    }
+
     .menu-toggle {
         display: block;
     }
@@ -1125,8 +1137,43 @@ body {
     .close-sidebar-btn {
         display: block;
     }
-    .main-content { width: 100%; min-width: 0; }
-    .quick-actions { grid-template-columns: 1fr; }
+    .main-content {
+        width: 100%;
+        min-width: 0;
+        min-height: 0;
+    }
+    .chat-container {
+        min-height: 0;
+    }
+    .chat-header {
+        padding: 8px 16px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .header-spacer {
+        display: none;
+    }
+    .model-selector-wrapper {
+        width: 100%;
+        min-width: 0;
+    }
+    .model-selector {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .messages {
+        padding: 20px 16px;
+        min-height: 0;
+    }
+    .input-area {
+        padding: 16px;
+    }
+    .quick-actions {
+        grid-template-columns: 1fr;
+    }
+    .sidebar {
+        z-index: 1002;
+    }
 }
 
 @keyframes sidebarFlow {
