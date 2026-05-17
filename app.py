@@ -11,13 +11,21 @@ from functools import wraps
 
 app = Flask(__name__, static_folder='frontend', static_url_path='')
 
-# Allow local development frontends such as file://, Flask, VS Code Live Server,
-# Vite, and other localhost ports to call the API.
+# Allow local development frontends (localhost/file://) and deployed frontends (Render, etc.)
+# via a comma-separated env var: FRONTEND_ORIGINS="https://your-frontend.onrender.com,https://your-api.onrender.com"
+frontend_origins_raw = os.getenv("FRONTEND_ORIGINS", "").strip()
+if frontend_origins_raw:
+    frontend_origins = [o.strip() for o in frontend_origins_raw.split(",") if o.strip()]
+else:
+    # Safe fallback for this project (no credentials)
+    frontend_origins = ["*"]
+
 CORS(app, resources={r"/api/*": {
     "origins": [
+        *frontend_origins,
+        "null",
         r"http://localhost:\d+",
-        r"http://127\.0\.0\.1:\d+",
-        "null"
+        r"http://127\.0\.0\.1:\d+"
     ],
     "methods": ["GET", "POST", "OPTIONS"],
     "allow_headers": ["Content-Type", "Authorization"],
