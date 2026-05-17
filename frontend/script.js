@@ -49,15 +49,53 @@ let currentThreadId = null;
 const historyList = document.getElementById('historyList');
 
 // Authentication Logic
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateAuthFields() {
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+    let error = '';
+
+    if (!email) {
+        error = 'Email is required.';
+    } else if (!emailRegex.test(email)) {
+        error = 'Enter a valid email address.';
+    } else if (!password) {
+        error = 'Password is required.';
+    } else if (password.length < 6) {
+        error = 'Password must be at least 6 characters.';
+    }
+
+    if (error) {
+        authError.textContent = error;
+        authError.style.display = 'block';
+        authSubmitBtn.disabled = true;
+        return false;
+    }
+
+    authError.textContent = '';
+    authError.style.display = 'none';
+    authSubmitBtn.disabled = false;
+    return true;
+}
+
+authEmail.addEventListener('input', validateAuthFields);
+authPassword.addEventListener('input', validateAuthFields);
+
 toggleAuthMode.addEventListener('click', () => {
     isLoginMode = !isLoginMode;
     authTitle.textContent = isLoginMode ? 'Login to MIKU' : 'Register for MIKU';
     authSubmitBtn.textContent = isLoginMode ? 'Login' : 'Register';
     toggleAuthMode.textContent = isLoginMode ? 'Register here' : 'Login here';
+    validateAuthFields();
 });
 
 authSubmitBtn.addEventListener('click', async () => {
-    const email = authEmail.value;
+    if (!validateAuthFields()) {
+        return;
+    }
+
+    const email = authEmail.value.trim();
     const password = authPassword.value;
     const endpoint = isLoginMode ? '/api/login' : '/api/register';
 
@@ -244,6 +282,7 @@ document.querySelectorAll('.model-option').forEach(option => {
 
 // Initialize default model on page load
 window.addEventListener('DOMContentLoaded', () => {
+    validateAuthFields();
     checkAuthState();
 });
 
