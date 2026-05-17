@@ -55,6 +55,274 @@ const threadSearchInput = document.getElementById('threadSearchInput');
 const scrollLatestBtn = document.getElementById('scrollLatestBtn');
 const inputCount = document.getElementById('inputCount');
 
+// Autocomplete / Suggestions
+const autocompleteContainer = document.getElementById('autocompleteContainer');
+let autocompleteOpen = false;
+let autocompleteItems = [];
+let autocompleteIndex = 0;
+let autocompleteLastQuery = '';
+
+function escapeHtml(str) {
+    return String(str)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '<')
+        .replaceAll('>', '>')
+        .replaceAll('"', '"')
+        .replaceAll("'", '&#039;');
+}
+
+function isAutocompleteTriggerContext() {
+    const v = userInput?.value ?? '';
+    const cursorPos = userInput?.selectionStart ?? v.length;
+    const beforeCursor = v.slice(0, cursorPos);
+
+    // Get the "current token" after last whitespace
+    const match = beforeCursor.match(/(^|\s)([^\s]*)$/);
+    const token = match ? match[2] : '';
+    const hasWhitespaceBefore = match ? match[1].length > 0 : true;
+
+    return { token, cursorPos, hasWhitespaceBefore };
+}
+
+function getSlashCommandSuggestions(prefix) {
+    const commandMap = {
+        '/summarize': 'Summarize this with key points, decisions, and action items',
+        '/code': 'Senior engineer code help (reasoning + edge cases)',
+        '/plan': 'Step-by-step practical plan with priorities',
+        '/translate': 'Translate while preserving meaning, tone, and formatting',
+        '/improve': 'Improve clarity, structure, tone, and impact',
+        '/help': 'Show help and available commands',
+        '/threads': 'List recent threads',
+        '/clear': 'Clear saved chat threads',
+        '/export': 'Export the current thread'
+    };
+
+    const p = (prefix || '').toLowerCase();
+    return Object.keys(commandMap)
+        .filter(cmd => cmd.toLowerCase().startsWith(p))
+        .map(cmd => ({ id: cmd, label: cmd, meta: commandMap[cmd], insertText: cmd }));
+}
+
+function tokenizeForRecentSuggestions(text) {
+    return String(text || '')
+        .toLowerCase()
+        .replaceAll(/[\r\n]+/g, ' ')
+        .split(/\s+/)
+        .map(t => t.trim())
+        .filter(Boolean)
+        .filter(t => t.length >= 3 && t.length <= 22);
+}
+
+function getRecentSuggestions(query) {
+    const q = (query || '').toLowerCase().trim();
+    if (!q) return [];
+
+    // Build lightweight corpus from recent threads
+    const ids = Object.keys(conversations || {}).slice(-10);
+    const corpus = [];
+    for (const id of ids) {
+        const t = conversations[id];
+        if (!t) continue;
+        if (t.title) corpus.push(t.title);
+        if (Array.isArray(t.messages)) {
+            const recentMsgs = t.messages.slice(-6).map(m => m?.text).filter(Boolean);
+            corpus.push(...recentMsgs);
+        }
+    }
+
+    // Extract tokens and score by prefix match
+    const freq = new Map();
+    for (const item of corpus) {
+        for (const tok of tokenizeForRecentSuggestions(item)) {
+            freq.set(tok, (freq.get(tok) || 0) + 1);
+        }
+    }
+
+    const scored = [...freq.entries()]
+        .filter(([tok]) => tok.startsWith(q))
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([tok]) => ({
+            id: tok,
+            label: tok,
+            meta: 'From recent messages',
+            insertText: tok
+        }));
+
+    return scored;
+}
+
+function buildAutocompleteItems(query) {
+    const { token } = isAutocompleteTriggerContext();
+    const current = token || '';
+
+    // Slash command autocomplete
+    if (current.startsWith('/')) {
+        return getSlashCommandSuggestions(current).slice(0, 7);
+    }
+
+    // For normal text, show recent token suggestions only when query is "word-like"
+    const trimmed = current.trim();
+    if (!trimmed || trimmed.length < 3) return [];
+    return getRecentSuggestions(trimmed).slice(0, 6);
+}
+
+function closeAutocomplete() {
+    autocompleteOpen = false;
+    autocompleteItems = [];
+    autocompleteIndex = 0;
+    autocompleteLastQuery = '';
+    if (autocompleteContainer) {
+        autocompleteContainer.innerHTML = '';
+        autocompleteContainer.setAttribute('aria-expanded', 'false');
+        autocompleteContainer.style.display = 'none';
+    }
+}
+
+function renderAutocomplete() {
+    if (!autocompleteContainer) return;
+
+    autocompleteContainer.innerHTML = '';
+    if (!autocompleteItems.length) {
+        closeAutocomplete();
+        return;
+    }
+
+    autocompleteContainer.style.display = 'block';
+    autocompleteContainer.setAttribute('aria-expanded', 'true');
+
+    autocompleteItems.forEach((item, idx) => {
+        const el = document.createElement('div');
+        el.className = `autocomplete-item ${idx === autocompleteIndex ? 'active' : ''}`;
+        el.setAttribute('role', 'option');
+        el.setAttribute('aria-selected', idx === autocompleteIndex ? 'true' : 'false');
+        el.dataset.index = String(idx);
+
+        el.innerHTML = `
+            <div class="autocomplete-main">${escapeHtml(item.label)}</div>
+            <div class="autocomplete-sub">${escapeHtml(item.meta || '')}</div>
+        `;
+
+        el.addEventListener('mousedown', (e) => {
+            // prevent textarea blur
+            e.preventDefault();
+        });
+
+        el.addEventListener('click', () => {
+            acceptAutocompleteSelection();
+        });
+
+        autocompleteContainer.appendChild(el);
+    });
+}
+
+function openAutocompleteIfNeeded() {
+    if (!autocompleteContainer) return;
+
+    const { token } = isAutocompleteTriggerContext();
+    const q = token || '';
+    autocompleteLastQuery = q;
+
+    const nextItems = buildAutocompleteItems(q);
+    const shouldOpen = nextItems.length > 0;
+
+    if (!shouldOpen) {
+        closeAutocomplete();
+        return;
+    }
+
+    autocompleteItems = nextItems;
+    autocompleteIndex = 0;
+    autocompleteOpen = true;
+    renderAutocomplete();
+}
+
+function acceptAutocompleteSelection() {
+    if (!autocompleteOpen || !autocompleteItems.length) return;
+
+    const item = autocompleteItems[autocompleteIndex] || autocompleteItems[0];
+    if (!item) return;
+
+    // Replace the "current token" with item.insertText
+    const v = userInput.value;
+    const cursorPos = userInput.selectionStart;
+    const beforeCursor = v.slice(0, cursorPos);
+    const afterCursor = v.slice(cursorPos);
+
+    const match = beforeCursor.match(/(^|\s)([^\s]*)$/);
+    if (!match) {
+        userInput.value = `${v}${v && !v.endsWith(' ') ? ' ' : ''}${item.insertText}`;
+    } else {
+        const leading = beforeCursor.slice(0, beforeCursor.length - (match[2]?.length ?? 0));
+        const separator = match[1].length ? match[1] : '';
+        const newBeforeCursor = `${leading}${separator}${item.insertText}`;
+        userInput.value = `${newBeforeCursor}${afterCursor}`;
+    }
+
+    closeAutocomplete();
+    userInput.focus();
+    userInput.dispatchEvent(new Event('input'));
+}
+
+function moveAutocompleteSelection(delta) {
+    if (!autocompleteOpen || !autocompleteItems.length) return;
+    autocompleteIndex = (autocompleteIndex + delta + autocompleteItems.length) % autocompleteItems.length;
+    renderAutocomplete();
+}
+
+// Show autocomplete on input changes
+userInput.addEventListener('input', () => {
+    // Let slash command suggestions react immediately; avoid when disabled/auth overlay
+    if (userInput.disabled) return;
+
+    openAutocompleteIfNeeded();
+});
+
+// Close autocomplete on blur / external clicks
+document.addEventListener('click', (e) => {
+    if (!autocompleteContainer) return;
+    if (!e.target.closest('#autocompleteContainer') && !e.target.closest('#userInput')) {
+        closeAutocomplete();
+    }
+});
+
+userInput.addEventListener('keydown', (e) => {
+    if (!autocompleteContainer) return;
+
+    if (e.key === 'Escape') {
+        if (autocompleteOpen) {
+            e.preventDefault();
+            closeAutocomplete();
+        }
+        return;
+    }
+
+    if (!autocompleteOpen) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        moveAutocompleteSelection(1);
+        return;
+    }
+    if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        moveAutocompleteSelection(-1);
+        return;
+    }
+
+    // Tab accepts suggestion. Enter accepts suggestion ONLY when dropdown open.
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        acceptAutocompleteSelection();
+        return;
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        acceptAutocompleteSelection();
+        return;
+    }
+});
+
 let isLoginMode = true;
 let currentUser = JSON.parse(localStorage.getItem('miku_user')) || null;
 const savedAssistantOptions = JSON.parse(localStorage.getItem('miku_assistant_options')) || {};
