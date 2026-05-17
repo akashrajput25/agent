@@ -1,9 +1,18 @@
-// Use relative API paths when Flask serves the frontend. If opened from file://
-// or a separate local dev server, call the Flask backend directly.
-const isFlaskOrigin = ['localhost:5000', '127.0.0.1:5000'].includes(window.location.host);
-const API_BASE_URL = (window.location.protocol === 'file:' || window.location.origin === 'null' || !isFlaskOrigin)
-    ? 'http://127.0.0.1:5000'
-    : '';
+/**
+ * API base URL:
+ * - On Render/mobile: use relative URLs so calls go to the same origin as the deployed app.
+ * - On local dev (localhost/127.0.0.1): call the Flask backend directly.
+ */
+const isLocalHost =
+    window.location.host === 'localhost:5000' ||
+    window.location.host === '127.0.0.1:5000' ||
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1';
+
+const API_BASE_URL =
+    (window.location.protocol === 'file:' || window.location.origin === 'null' || isLocalHost)
+        ? 'http://127.0.0.1:5000'
+        : '';
 
 const messagesContainer = document.getElementById('messagesContainer');
 const userInput = document.getElementById('userInput');
