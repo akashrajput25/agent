@@ -981,6 +981,21 @@ input:focus-visible {
     animation: toolbarDrop 0.55s var(--motion-smooth) both;
 }
 
+/* Agent settings dropdown (mobile) */
+.agent-settings-dropdown > summary {
+    display: none;
+    user-select: none;
+}
+
+/* When assistant options are inside the dropdown, we treat them like normal flow on mobile */
+.agent-settings-dropdown .assistant-options {
+    position: static;
+    inset: auto;
+    top: auto;
+    left: auto;
+    right: auto;
+}
+
 .option-group {
     display: flex;
     flex-direction: column;
@@ -1846,11 +1861,46 @@ input:focus-visible {
         min-width: 0;
         font-size: 12px;
     }
-    .assistant-options {
-        left: 0;
-        top: 92px;
+    /* Hide the expanded panel until user opens the dropdown */
+    .agent-settings-dropdown > summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 10px 14px;
+        margin: 0;
+        border-radius: 10px;
+        background: rgba(9, 12, 16, 0.7);
+        border: 1px solid var(--border-soft);
+        backdrop-filter: blur(22px) saturate(1.16);
+        -webkit-backdrop-filter: blur(22px) saturate(1.16);
+        color: var(--text-primary);
+        cursor: pointer;
+        font-weight: 800;
+        z-index: 1001;
+    }
+
+    .agent-settings-dropdown > summary::after {
+        content: "▾";
+        color: var(--text-tertiary);
+        font-size: 12px;
+    }
+
+    .agent-settings-dropdown .assistant-options {
+        display: none;
+    }
+
+    .agent-settings-dropdown[open] .assistant-options {
+        display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        padding: 10px 16px;
+        gap: 10px;
+        padding: 12px 16px;
+        background: rgba(9, 12, 16, 0.7);
+        border: 1px solid var(--border-soft);
+        border-radius: 12px;
+        margin-top: 0;
+        box-shadow: 0 14px 30px rgba(0, 0, 0, 0.16);
+        animation: toolbarDrop 0.2s var(--motion-smooth) both;
     }
     .header-spacer {
         display: none;

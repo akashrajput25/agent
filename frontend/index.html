@@ -128,43 +128,48 @@
                             <div class="model-option" data-model="liquid/lfm-2.5-1.2b-thinking:free">Liquid LFM 2.5 1.2B Thinking Free</div>
                         </div>
                     </div>
+                    <!-- Agent settings dropdown goes in header -->
+                    <details class="agent-settings-dropdown" aria-label="Agent settings">
+                        <summary>Agent settings</summary>
+
+                        <section class="assistant-options" aria-label="Assistant options">
+                            <div class="option-group">
+                                <label for="assistantMode">Mode</label>
+                                <select id="assistantMode" class="option-select">
+                                    <option value="balanced">Balanced</option>
+                                    <option value="coder">Code Expert</option>
+                                    <option value="teacher">Tutor</option>
+                                    <option value="researcher">Research</option>
+                                    <option value="creative">Creative</option>
+                                    <option value="productivity">Productivity</option>
+                                </select>
+                            </div>
+                            <div class="option-group">
+                                <label for="toneSelect">Tone</label>
+                                <select id="toneSelect" class="option-select">
+                                    <option value="friendly">Friendly</option>
+                                    <option value="direct">Direct</option>
+                                    <option value="professional">Professional</option>
+                                    <option value="simple">Simple</option>
+                                </select>
+                            </div>
+                            <div class="option-group">
+                                <label for="lengthSelect">Length</label>
+                                <select id="lengthSelect" class="option-select">
+                                    <option value="normal">Normal</option>
+                                    <option value="short">Short</option>
+                                    <option value="detailed">Detailed</option>
+                                </select>
+                            </div>
+                            <div class="option-group creativity-group">
+                                <label for="creativityRange">Creativity</label>
+                                <input id="creativityRange" type="range" min="0" max="100" value="55">
+                            </div>
+                        </section>
+                    </details>
+
                     <div class="header-spacer"></div>
                 </div>
-
-                <section class="assistant-options" aria-label="Assistant options">
-                    <div class="option-group">
-                        <label for="assistantMode">Mode</label>
-                        <select id="assistantMode" class="option-select">
-                            <option value="balanced">Balanced</option>
-                            <option value="coder">Code Expert</option>
-                            <option value="teacher">Tutor</option>
-                            <option value="researcher">Research</option>
-                            <option value="creative">Creative</option>
-                            <option value="productivity">Productivity</option>
-                        </select>
-                    </div>
-                    <div class="option-group">
-                        <label for="toneSelect">Tone</label>
-                        <select id="toneSelect" class="option-select">
-                            <option value="friendly">Friendly</option>
-                            <option value="direct">Direct</option>
-                            <option value="professional">Professional</option>
-                            <option value="simple">Simple</option>
-                        </select>
-                    </div>
-                    <div class="option-group">
-                        <label for="lengthSelect">Length</label>
-                        <select id="lengthSelect" class="option-select">
-                            <option value="normal">Normal</option>
-                            <option value="short">Short</option>
-                            <option value="detailed">Detailed</option>
-                        </select>
-                    </div>
-                    <div class="option-group creativity-group">
-                        <label for="creativityRange">Creativity</label>
-                        <input id="creativityRange" type="range" min="0" max="100" value="55">
-                    </div>
-                </section>
 
                 <!-- Messages Container -->
                 <div class="messages" id="messagesContainer"></div>
